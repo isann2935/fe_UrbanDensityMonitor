@@ -1,5 +1,6 @@
 // src/infrastructure/services/trafficWebSocketService.ts
-// Aligned with api_documentation.md
+// Multi-stream WebSocket Manager
+// Mendukung N koneksi WebSocket paralel — satu per stream_id
 
 import { authService } from "./authService";
 
@@ -16,6 +17,9 @@ export type FrameUpdateMessage = {
   };
   person_vehicle_ratio: number;
   density_status: string;
+  average_speed?: number;
+  road_occupancy?: number;
+  congestion_index?: number;
   /** base64 string (with or without data URI prefix) */
   frame_base64?: string;
   /** Alias — backend may send as "frame" too */
@@ -29,25 +33,39 @@ export type FrameUpdateMessage = {
 
 type MessageHandler = (data: FrameUpdateMessage) => void;
 
+interface StreamConnection {
+  ws: WebSocket;
+  handlers: Set<MessageHandler>;
+  reconnectTimer: ReturnType<typeof setTimeout> | null;
+  isConnecting: boolean;
+}
+
 class TrafficWebSocketService {
-  private ws: WebSocket | null = null;
-  private handlers: Set<MessageHandler> = new Set();
-  private isConnecting = false;
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private streamId: string | null = null;
+  // Map dari stream_id → objek koneksi
+  private connections: Map<string, StreamConnection> = new Map();
 
-  async connect(streamId: string) {
-    // Already connected to the same stream — do nothing
-    if (this.ws?.readyState === WebSocket.OPEN && this.streamId === streamId) return;
+  /**
+   * Buka koneksi WebSocket untuk stream_id tertentu.
+   * Jika sudah terbuka (OPEN), tidak akan membuat koneksi baru.
+   * Koneksi lama untuk stream lain TIDAK ditutup (multi-stream).
+   */
+  async connect(streamId: string): Promise<void> {
+    const existing = this.connections.get(streamId);
+    if (existing?.ws.readyState === WebSocket.OPEN) return;
+    if (existing?.isConnecting) return;
 
-    // If switching streams, close the old connection first
-    if (this.ws && this.streamId !== streamId) {
-      this.ws.close();
-      this.ws = null;
+    // Buat entry koneksi baru jika belum ada
+    if (!this.connections.has(streamId)) {
+      this.connections.set(streamId, {
+        ws: null as unknown as WebSocket,
+        handlers: new Set(),
+        reconnectTimer: null,
+        isConnecting: false,
+      });
     }
 
-    this.streamId = streamId;
-    this.isConnecting = true;
+    const conn = this.connections.get(streamId)!;
+    conn.isConnecting = true;
 
     try {
       const session = await authService.getSession();
@@ -55,78 +73,120 @@ class TrafficWebSocketService {
 
       const wsUrl =
         process.env.NEXT_PUBLIC_WS_API_URL || "ws://localhost:8000";
-      // Docs: wss://<host>/ws/live/{stream_id}
-      // Token passed as query param since WS can't have custom headers in browsers
       const url = token
         ? `${wsUrl}/ws/live/${streamId}?token=${token}`
         : `${wsUrl}/ws/live/${streamId}`;
 
-      this.ws = new WebSocket(url);
+      const ws = new WebSocket(url);
+      conn.ws = ws;
 
-      this.ws.onmessage = (event) => {
+      ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data) as FrameUpdateMessage;
           if (data.type === "frame_update") {
-            this.handlers.forEach((handler) => handler(data));
+            const c = this.connections.get(streamId);
+            c?.handlers.forEach((h) => h(data));
           }
         } catch (err) {
-          console.error("[WS] Failed to parse message:", err);
+          console.error(`[WS:${streamId}] Failed to parse message:`, err);
         }
       };
 
-      this.ws.onclose = (event) => {
-        this.isConnecting = false;
-        console.log(`[WS] Closed (code: ${event.code}) — scheduling reconnect…`);
-        this.scheduleReconnect();
-      };
-
-      this.ws.onerror = (err) => {
-        console.error("[WS] Error:", err);
-        // onclose will fire after onerror
-      };
-
-      this.ws.onopen = () => {
-        this.isConnecting = false;
-        console.log("[WS] Connected to stream:", streamId);
-        if (this.reconnectTimer) {
-          clearTimeout(this.reconnectTimer);
-          this.reconnectTimer = null;
+      ws.onopen = () => {
+        const c = this.connections.get(streamId);
+        if (c) {
+          c.isConnecting = false;
+          if (c.reconnectTimer) {
+            clearTimeout(c.reconnectTimer);
+            c.reconnectTimer = null;
+          }
         }
+        console.log(`[WS:${streamId}] Connected`);
+      };
+
+      ws.onclose = (event) => {
+        const c = this.connections.get(streamId);
+        if (c) c.isConnecting = false;
+        console.log(`[WS:${streamId}] Closed (code: ${event.code}) — scheduling reconnect…`);
+        this._scheduleReconnect(streamId);
+      };
+
+      ws.onerror = (err) => {
+        console.error(`[WS:${streamId}] Error:`, err);
+        // onclose akan dipanggil setelah onerror
       };
     } catch (err) {
-      this.isConnecting = false;
-      console.error("[WS] Connection failed:", err);
-      this.scheduleReconnect();
+      const c = this.connections.get(streamId);
+      if (c) c.isConnecting = false;
+      console.error(`[WS:${streamId}] Connection failed:`, err);
+      this._scheduleReconnect(streamId);
     }
   }
 
-  private scheduleReconnect() {
-    if (!this.streamId) return;
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = setTimeout(() => {
-      console.log("[WS] Reconnecting…");
-      if (this.streamId) this.connect(this.streamId);
+  private _scheduleReconnect(streamId: string) {
+    const conn = this.connections.get(streamId);
+    // Jangan reconnect jika stream sudah di-disconnect secara sengaja (entry dihapus)
+    if (!conn) return;
+    if (conn.reconnectTimer) clearTimeout(conn.reconnectTimer);
+    conn.reconnectTimer = setTimeout(() => {
+      console.log(`[WS:${streamId}] Reconnecting…`);
+      this.connect(streamId);
     }, 5000);
   }
 
-  disconnect() {
-    this.streamId = null;
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
+  /**
+   * Daftarkan handler untuk menerima data dari stream tertentu.
+   * Mengembalikan fungsi unsubscribe.
+   */
+  subscribe(streamId: string, handler: MessageHandler): () => void {
+    // Pastikan entry ada meski connect() belum dipanggil
+    if (!this.connections.has(streamId)) {
+      this.connections.set(streamId, {
+        ws: null as unknown as WebSocket,
+        handlers: new Set(),
+        reconnectTimer: null,
+        isConnecting: false,
+      });
     }
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    this.connections.get(streamId)!.handlers.add(handler);
+    return () => {
+      this.connections.get(streamId)?.handlers.delete(handler);
+    };
+  }
+
+  /**
+   * Tutup koneksi WebSocket untuk stream_id tertentu saja.
+   * Stream lain TETAP berjalan.
+   */
+  disconnect(streamId: string) {
+    const conn = this.connections.get(streamId);
+    if (!conn) return;
+    if (conn.reconnectTimer) {
+      clearTimeout(conn.reconnectTimer);
+      conn.reconnectTimer = null;
+    }
+    if (conn.ws) {
+      conn.ws.onclose = null; // cegah auto-reconnect saat sengaja ditutup
+      conn.ws.close();
+    }
+    this.connections.delete(streamId);
+    console.log(`[WS:${streamId}] Disconnected`);
+  }
+
+  /**
+   * Tutup SEMUA koneksi yang sedang aktif.
+   */
+  disconnectAll() {
+    for (const streamId of Array.from(this.connections.keys())) {
+      this.disconnect(streamId);
     }
   }
 
-  subscribe(handler: MessageHandler) {
-    this.handlers.add(handler);
-    return () => {
-      this.handlers.delete(handler);
-    };
+  /** Cek apakah koneksi untuk stream_id tertentu sedang OPEN */
+  isConnected(streamId: string): boolean {
+    return this.connections.get(streamId)?.ws?.readyState === WebSocket.OPEN;
   }
 }
 
+// Singleton — satu instance untuk seluruh aplikasi
 export const trafficWebSocketService = new TrafficWebSocketService();

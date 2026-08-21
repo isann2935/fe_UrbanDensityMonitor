@@ -1,15 +1,20 @@
 "use client";
 
 // src/application/use-cases/useTrafficData.ts
+// Per-stream hook — aman dipanggil N kali secara paralel untuk N stream berbeda
 
 import { useState, useEffect } from "react";
-import type { DashboardData, TrafficMetric, AlertStatus } from "@/domain/entities/TrafficMetric";
+import type {
+  DashboardData,
+  TrafficMetric,
+  AlertStatus,
+} from "@/domain/entities/TrafficMetric";
 import {
   trafficWebSocketService,
   FrameUpdateMessage,
 } from "@/infrastructure/services/trafficWebSocketService";
 
-interface UseTrafficDataResult {
+export interface UseTrafficDataResult {
   data: DashboardData | null;
   frameBase64: string | null;
   isLoading: boolean;
@@ -20,13 +25,17 @@ interface UseTrafficDataResult {
 
 /** Resolve whichever base64 field the backend sends */
 function resolveFrame(msg: FrameUpdateMessage): string | null {
-  // Docs show both "frame_base64" and "frame" may be present
   const raw = msg.frame_base64 ?? msg.frame ?? null;
   if (!raw) return null;
   if (raw.startsWith("data:image")) return raw;
   return `data:image/jpeg;base64,${raw}`;
 }
 
+/**
+ * Hook per-stream untuk mengonsumsi data WebSocket secara real-time.
+ * Bisa dipanggil N kali secara bersamaan dengan streamId berbeda
+ * tanpa saling mengganggu (karena service sudah multi-connection).
+ */
 export function useTrafficData(streamId: string | null): UseTrafficDataResult {
   const [data, setData] = useState<DashboardData | null>(null);
   const [frameBase64, setFrameBase64] = useState<string | null>(null);
@@ -45,22 +54,23 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
     setIsLoading(true);
     setError(null);
 
-    // Connect WebSocket
+    // Buka koneksi WebSocket untuk stream ini
+    // (tidak menutup koneksi stream lain)
     trafficWebSocketService.connect(streamId).catch((err) => {
-      setError(err.message || "Failed to connect to stream");
+      setError(err?.message || "Failed to connect to stream");
       setIsLoading(false);
     });
 
+    // Subscribe hanya ke stream ini
     const unsubscribe = trafficWebSocketService.subscribe(
+      streamId,
       (msg: FrameUpdateMessage) => {
         setIsLoading(false);
 
-        // Resolve frame — backend sends frame_base64 OR frame
         const frame = resolveFrame(msg);
         setFrameBase64(frame);
         setLastFetchedAt(new Date());
 
-        // Build metrics from API counts
         const { counts } = msg;
         const totalVehicle =
           (counts.motorcycle ?? 0) +
@@ -70,7 +80,7 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
 
         const metrics: TrafficMetric[] = [
           {
-            id: "metric-car",
+            id: `${streamId}-metric-car`,
             label: "Mobil",
             value: counts.car ?? 0,
             unit: "vehicles",
@@ -80,7 +90,7 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
             colorAccent: "#E879F9",
           },
           {
-            id: "metric-motor",
+            id: `${streamId}-metric-motor`,
             label: "Motor",
             value: counts.motorcycle ?? 0,
             unit: "vehicles",
@@ -90,7 +100,7 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
             colorAccent: "#E879F9",
           },
           {
-            id: "metric-truck",
+            id: `${streamId}-metric-truck`,
             label: "Truk",
             value: counts.truck ?? 0,
             unit: "vehicles",
@@ -100,7 +110,7 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
             colorAccent: "#A78BFA",
           },
           {
-            id: "metric-bus",
+            id: `${streamId}-metric-bus`,
             label: "Bus",
             value: counts.bus ?? 0,
             unit: "vehicles",
@@ -110,7 +120,7 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
             colorAccent: "#A78BFA",
           },
           {
-            id: "metric-person",
+            id: `${streamId}-metric-person`,
             label: "Pejalan Kaki",
             value: counts.person ?? 0,
             unit: "people",
@@ -120,7 +130,7 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
             colorAccent: "#F0ABFC",
           },
           {
-            id: "metric-density",
+            id: `${streamId}-metric-density`,
             label: msg.density_status,
             value: Number(msg.person_vehicle_ratio).toFixed(2),
             unit: "ratio",
@@ -140,21 +150,21 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
         setData((prev) => {
           let updatedAlerts = prev?.alerts ?? [];
 
-          // Alert hanya dikirim saat status berubah (state-transition), bukan setiap frame:
-          // - 'high_density' / 'anomaly' → kondisi ramai baru mulai
-          // - 'cleared' → kondisi sudah kembali normal
           if (msg.alert && msg.alert.triggered) {
             const isCleared = msg.alert.type === "cleared";
             const newAlert: AlertStatus = {
               id: `alert-${Date.now()}`,
-              type: isCleared ? "high_density" : msg.alert.type.includes("Anomaly") ? "anomaly" : "high_density",
+              type: isCleared
+                ? "high_density"
+                : msg.alert.type.includes("Anomaly")
+                ? "anomaly"
+                : "high_density",
               message: msg.alert.message,
               severity: isCleared ? "low" : "critical",
               timestamp: new Date().toISOString(),
-              isActive: !isCleared,  // alert 'cleared' ditampilkan sebagai resolved
+              isActive: !isCleared,
               locationZone: `Stream ${streamId}`,
             };
-            // Keep max 5 recent alerts in the panel
             updatedAlerts = [newAlert, ...updatedAlerts].slice(0, 5);
           }
 
@@ -166,6 +176,17 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
             totalCameras: 1,
             locationName: `Stream ${streamId}`,
             coordinates: { lat: -6.2088, lng: 106.8456 },
+            totalVehicle,
+            densityStatus: msg.density_status,
+            averageSpeed: msg.average_speed ?? 0,
+            roadOccupancy: msg.road_occupancy ?? 0,
+            congestionIndex: msg.congestion_index ?? 0,
+          } as DashboardData & {
+            totalVehicle: number;
+            densityStatus: string;
+            averageSpeed: number;
+            roadOccupancy: number;
+            congestionIndex: number;
           };
         });
       }
@@ -173,7 +194,8 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
 
     return () => {
       unsubscribe();
-      trafficWebSocketService.disconnect();
+      // Tutup hanya koneksi untuk stream INI, bukan semua stream
+      trafficWebSocketService.disconnect(streamId);
     };
   }, [streamId]);
 
@@ -184,7 +206,7 @@ export function useTrafficData(streamId: string | null): UseTrafficDataResult {
     error,
     refetch: () => {
       if (streamId) {
-        trafficWebSocketService.disconnect();
+        trafficWebSocketService.disconnect(streamId);
         trafficWebSocketService.connect(streamId);
       }
     },

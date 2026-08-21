@@ -15,8 +15,20 @@ import { Header } from "@/presentation/components/Header";
 import { StatsPanel } from "@/presentation/components/StatsPanel";
 import { AlertPanel } from "@/presentation/components/AlertPanel";
 import { LoadingOverlay } from "@/presentation/components/LoadingOverlay";
+import { StreamStatCard } from "@/presentation/components/StreamStatCard";
 
-import { Video, MapPin, Wifi, Zap, Clock, Search, X, ArrowLeft } from "lucide-react";
+import {
+  Video,
+  Wifi,
+  Zap,
+  Clock,
+  Search,
+  X,
+  ArrowLeft,
+  LayoutGrid,
+  Activity,
+  AlertTriangle,
+} from "lucide-react";
 
 export default function Page() {
   const [streams, setStreams] = useState<Stream[]>([]);
@@ -34,7 +46,7 @@ export default function Page() {
       .finally(() => setIsStreamsLoading(false));
   }, []);
 
-  // Filter streams by search query (Vercel React best practice: memoized filtering)
+  // Filter streams by search query
   const filteredStreams = useMemo(() => {
     if (!searchQuery.trim()) return streams;
     const q = searchQuery.toLowerCase().trim();
@@ -45,7 +57,7 @@ export default function Page() {
     );
   }, [streams, searchQuery]);
 
-  // Application layer: inject data via use-case hook (calls infrastructure service)
+  // Hook untuk detail view satu stream yang di-expand
   const { data, frameBase64, isLoading, error, refetch, lastFetchedAt } =
     useTrafficData(activeStreamId);
 
@@ -56,8 +68,10 @@ export default function Page() {
       .reduce((sum, m) => sum + (typeof m.value === "number" ? m.value : 0), 0);
   }, [data]);
 
-  // Resolve selected stream's location name
   const selectedStream = streams.find((s) => s.id === activeStreamId);
+
+  const activeStreams = streams.filter((s) => s.status === "active");
+  const inactiveStreams = streams.filter((s) => s.status !== "active");
 
   return (
     <div className="flex min-h-screen bg-app-bg">
@@ -86,10 +100,13 @@ export default function Page() {
           onStreamChange={(id) => setActiveStreamId(id || null)}
         />
 
-        {/* Loading state with Back / Cancel button */}
-        {(isStreamsLoading || (isLoading && !data && activeStreamId)) && (
+        {/* Loading state while fetching stream list */}
+        {isStreamsLoading && <LoadingOverlay />}
+
+        {/* Loading state saat masuk ke detail view */}
+        {!isStreamsLoading && isLoading && !data && activeStreamId && (
           <LoadingOverlay
-            onCancel={activeStreamId ? () => setActiveStreamId(null) : undefined}
+            onCancel={() => setActiveStreamId(null)}
           />
         )}
 
@@ -120,22 +137,33 @@ export default function Page() {
           </div>
         )}
 
-        {/* Dashboard Content */}
-        <div className="flex-1 p-6 overflow-y-auto">
-          {/* When a stream is active — show dashboard grid */}
-          {data && (
+        {/* ════════════════════════════════════════════════════════════
+            DETAIL VIEW — Satu stream di-expand (klik Expand di kartu)
+        ════════════════════════════════════════════════════════════ */}
+        {!isStreamsLoading && activeStreamId && data && (
+          <div className="flex-1 p-6 overflow-y-auto">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
-              {/* Left column — Live Feed (takes 2 cols) */}
+              {/* Left column — Live Feed */}
               <div className="lg:col-span-2">
-                {/* Navigation Back Button */}
+                {/* Back button */}
                 <div className="flex items-center justify-between mb-3">
                   <button
                     onClick={() => setActiveStreamId(null)}
                     className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-1 hover:bg-surface-2 border border-border-default hover:border-accent-primary/30 text-xs font-semibold text-text-secondary hover:text-accent-primary transition-all duration-200 shadow-sm group"
                   >
-                    <ArrowLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
-                    <span>Kembali ke Menu CCTV</span>
+                    <ArrowLeft
+                      size={14}
+                      className="group-hover:-translate-x-0.5 transition-transform"
+                    />
+                    <span>Kembali ke Dashboard</span>
                   </button>
+
+                  <div className="flex items-center gap-2 text-xs text-text-muted">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                    <span className="font-medium">
+                      {selectedStream?.location_name}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="h-[420px]">
@@ -159,7 +187,7 @@ export default function Page() {
                   </span>
                   <span className="text-text-muted/20">·</span>
                   <span className="text-[11px] text-text-muted font-mono">
-                    ML Model: YOLOv8n · Python FastAPI
+                    ML Model: YOLOv8 · Python FastAPI
                   </span>
                 </div>
               </div>
@@ -170,160 +198,151 @@ export default function Page() {
                 <AlertPanel alerts={data.alerts} />
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* CCTV Selection Menu Grid — when no stream selected */}
-          {!activeStreamId && !isStreamsLoading && (
-            <div className="animate-fade-in">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                <div>
-                  <h2 className="text-xl font-bold text-text-primary tracking-tight">
-                    Pilih Stream CCTV
-                  </h2>
-                  <p className="text-sm text-text-muted mt-1">
-                    Pilih kamera CCTV kota Semarang untuk memulai pemantauan AI
-                  </p>
-                </div>
+        {/* ════════════════════════════════════════════════════════════
+            DASHBOARD UTAMA — Grid semua CCTV dengan statistik paralel
+        ════════════════════════════════════════════════════════════ */}
+        {!isStreamsLoading && !activeStreamId && (
+          <div className="flex-1 p-6 overflow-y-auto animate-fade-in">
 
-                {/* Search Bar Input */}
-                <div className="relative w-full md:w-80">
-                  <Search
-                    size={16}
-                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted"
-                  />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Cari jalan / nama CCTV..."
-                    className="w-full bg-surface-1 border border-border-default rounded-xl pl-10 pr-10 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all shadow-sm"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
-                      title="Hapus pencarian"
-                    >
-                      <X size={15} />
-                    </button>
-                  )}
+            {/* ── Header & Search ── */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div>
+                <div className="flex items-center gap-2.5 mb-1">
+                  <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center">
+                    <LayoutGrid size={13} className="text-accent-primary" />
+                  </div>
+                  <h1 className="text-xl font-bold text-text-primary tracking-tight">
+                    Live Dashboard
+                  </h1>
                 </div>
+                <p className="text-sm text-text-muted">
+                  Semua CCTV berjalan secara real-time dan paralel
+                </p>
               </div>
 
-              {/* Quick Stats & Result Counter */}
-              <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="bg-surface-1 border border-border-default rounded-xl px-4 py-2.5 flex items-center gap-3">
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">
-                        Total Kamera
-                      </p>
-                      <p className="text-lg font-bold text-text-primary">
-                        {streams.length}
-                      </p>
-                    </div>
-                    <div className="h-6 w-px bg-border-default" />
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-widest text-text-muted">
-                        Aktif
-                      </p>
-                      <p className="text-lg font-bold text-status-success">
-                        {streams.filter((s) => s.status === "active").length}
-                      </p>
-                    </div>
-                  </div>
-
-                  {searchQuery && (
-                    <div className="text-xs text-text-secondary">
-                      Menampilkan{" "}
-                      <span className="font-bold text-accent-primary">
-                        {filteredStreams.length}
-                      </span>{" "}
-                      dari {streams.length} kamera
-                    </div>
-                  )}
-                </div>
-
+              {/* Search */}
+              <div className="relative w-full md:w-80">
+                <Search
+                  size={16}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted"
+                />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Cari jalan / nama CCTV..."
+                  className="w-full bg-surface-1 border border-border-default rounded-xl pl-10 pr-10 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all shadow-sm"
+                />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="text-xs text-text-muted hover:text-accent-primary underline transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
                   >
-                    Reset Pencarian
+                    <X size={15} />
                   </button>
                 )}
               </div>
+            </div>
 
-              {/* Stream Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                {filteredStreams.map((stream) => (
+            {/* ── Stat Summary Strip ── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              {[
+                {
+                  label: "Total CCTV",
+                  value: streams.length,
+                  icon: Video,
+                  color: "text-text-primary",
+                  iconColor: "text-accent-primary",
+                  iconBg: "bg-accent-muted",
+                },
+                {
+                  label: "Live & Aktif",
+                  value: activeStreams.length,
+                  icon: Wifi,
+                  color: "text-emerald-400",
+                  iconColor: "text-emerald-400",
+                  iconBg: "bg-emerald-500/10",
+                },
+                {
+                  label: "Offline",
+                  value: inactiveStreams.length,
+                  icon: Activity,
+                  color: "text-text-muted",
+                  iconColor: "text-text-muted",
+                  iconBg: "bg-surface-3",
+                },
+                {
+                  label: "Hasil Pencarian",
+                  value: filteredStreams.length,
+                  icon: Search,
+                  color: "text-text-primary",
+                  iconColor: "text-text-secondary",
+                  iconBg: "bg-surface-3",
+                },
+              ].map((stat) => (
+                <div
+                  key={stat.label}
+                  className="bg-surface-1 border border-border-default rounded-xl px-4 py-3 flex items-center gap-3"
+                >
                   <div
-                    key={stream.id}
-                    onClick={() => setActiveStreamId(stream.id)}
-                    className="group bg-surface-1 border border-border-default rounded-xl p-4 cursor-pointer transition-all duration-300 hover:border-accent-primary/30 hover:bg-surface-2 card-interactive card-accent-stripe"
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${stat.iconBg}`}
                   >
-                    {/* Camera icon */}
-                    <div className="w-10 h-10 rounded-xl bg-accent-muted flex items-center justify-center mb-3 group-hover:shadow-card-glow transition-all">
-                      <Video size={18} className="text-accent-primary" />
-                    </div>
-
-                    <h3
-                      className="text-sm font-semibold text-text-primary mb-1 leading-tight truncate"
-                      title={stream.location_name}
-                    >
-                      {stream.location_name}
-                    </h3>
-
-                    <div className="flex items-center justify-between mt-2">
-                      <span className="text-[11px] text-text-muted capitalize font-medium">
-                        {stream.stream_type}
-                      </span>
-                      <span
-                        className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md ${
-                          stream.status === "active"
-                            ? "bg-status-success/10 text-status-success"
-                            : "bg-surface-3 text-text-muted"
-                        }`}
-                      >
-                        <span
-                          className={`w-1 h-1 rounded-full ${
-                            stream.status === "active"
-                              ? "bg-status-success"
-                              : "bg-text-muted"
-                          }`}
-                        />
-                        {stream.status === "active" ? "AI Ready" : "Offline"}
-                      </span>
-                    </div>
+                    <stat.icon size={14} className={stat.iconColor} />
                   </div>
+                  <div>
+                    <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">
+                      {stat.label}
+                    </p>
+                    <p className={`text-lg font-bold leading-tight ${stat.color}`}>
+                      {stat.value}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* ── Grid Kartu CCTV (semua paralel) ── */}
+            {filteredStreams.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {filteredStreams.map((stream) => (
+                  <StreamStatCard
+                    key={stream.id}
+                    stream={stream}
+                    onExpand={(id) => setActiveStreamId(id)}
+                  />
                 ))}
               </div>
-
-              {/* Empty Search Result State */}
-              {filteredStreams.length === 0 && (
-                <div className="text-center p-12 bg-surface-1 rounded-2xl border border-border-default mt-4">
-                  <div className="w-16 h-16 rounded-2xl bg-surface-3 flex items-center justify-center mx-auto mb-4">
-                    <Search size={28} className="text-text-muted" strokeWidth={1.5} />
-                  </div>
-                  <p className="text-text-secondary font-medium">
-                    CCTV tidak ditemukan
-                  </p>
-                  <p className="text-sm text-text-muted mt-1">
-                    Tidak ada kamera yang cocok dengan kata kunci &quot;{searchQuery}&quot;.
-                  </p>
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="mt-4 px-4 py-2 bg-surface-2 border border-border-default rounded-xl text-xs font-semibold text-text-primary hover:bg-surface-3 transition-colors"
-                    >
-                      Tampilkan Semua CCTV
-                    </button>
-                  )}
+            ) : (
+              /* Empty state */
+              <div className="text-center p-16 bg-surface-1 rounded-2xl border border-border-default">
+                <div className="w-16 h-16 rounded-2xl bg-surface-3 flex items-center justify-center mx-auto mb-4">
+                  <Search size={28} className="text-text-muted" strokeWidth={1.5} />
                 </div>
-              )}
-            </div>
-          )}
-        </div>
+                <p className="text-text-secondary font-medium">
+                  {streams.length === 0
+                    ? "Belum ada CCTV yang ditambahkan"
+                    : "CCTV tidak ditemukan"}
+                </p>
+                <p className="text-sm text-text-muted mt-1">
+                  {streams.length === 0
+                    ? "Tambahkan stream CCTV melalui menu Stream Management"
+                    : `Tidak ada yang cocok dengan "${searchQuery}"`}
+                </p>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="mt-4 px-4 py-2 bg-surface-2 border border-border-default rounded-xl text-xs font-semibold text-text-primary hover:bg-surface-3 transition-colors"
+                  >
+                    Tampilkan Semua CCTV
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
