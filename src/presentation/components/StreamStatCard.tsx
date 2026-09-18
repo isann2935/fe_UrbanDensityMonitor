@@ -60,9 +60,9 @@ const densityConfig: Record<
 
 const defaultDensity = {
   bg: "bg-white/5",
-  text: "text-text-muted",
-  border: "border-white/10",
-  dot: "bg-text-muted",
+  text: "text-secondary",
+  border: "border-default",
+  dot: "bg-secondary",
   label: "—",
 };
 
@@ -85,10 +85,10 @@ function VehicleStat({
       >
         <Icon size={13} style={{ color }} />
       </div>
-      <span className="text-[13px] font-bold text-text-primary leading-none">
+      <span className="text-[13px] font-bold text-white leading-none">
         {value}
       </span>
-      <span className="text-[9px] text-text-muted uppercase tracking-wider font-medium">
+      <span className="text-[9px] text-secondary uppercase tracking-wider font-medium">
         {label}
       </span>
     </div>
@@ -131,31 +131,43 @@ export function StreamStatCard({ stream, onExpand }: StreamStatCardProps) {
   const isConnecting = !isOffline && isLoading && !data;
   const isLive = !isLoading && !error && !!data;
 
+  const handleOpenDetail = () => {
+    if (stream.status === "active") {
+      onExpand(stream.id);
+    }
+  };
+
   return (
     <div
       className={`
-        group relative flex flex-col bg-surface-1 border rounded-2xl overflow-hidden
-        transition-all duration-300 hover:border-accent-primary/30 hover:shadow-lg hover:shadow-accent-primary/5
+        group relative flex flex-col bg-card border rounded-2xl overflow-hidden
+        card-interactive card-accent-stripe
         ${
           isLive && densityStatus === "High Density"
             ? "border-red-500/30 shadow-sm shadow-red-500/10"
             : isLive && densityStatus === "Anomaly"
             ? "border-purple-500/30 shadow-sm shadow-purple-500/10"
-            : "border-border-default"
+            : "border-white/[0.08] hover:border-accent/30"
         }
       `}
     >
       {/* ── Thumbnail / Live Feed Preview ── */}
-      <div className="relative h-40 bg-surface-2 overflow-hidden">
+      <div
+        onClick={handleOpenDetail}
+        className={`relative h-40 bg-black/30 overflow-hidden ${
+          stream.status === "active" ? "cursor-pointer" : ""
+        }`}
+        title={stream.status === "active" ? "Klik untuk melihat tampilan penuh" : undefined}
+      >
         {frameBase64 ? (
           <img
             src={frameBase64}
             alt={`Live feed ${stream.location_name}`}
-            className="w-full h-full object-cover transition-opacity duration-500"
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <div className="flex flex-col items-center gap-2 text-text-muted">
+            <div className="flex flex-col items-center gap-2 text-secondary">
               {isOffline ? (
                 <>
                   <WifiOff size={22} strokeWidth={1.5} />
@@ -166,9 +178,9 @@ export function StreamStatCard({ stream, onExpand }: StreamStatCardProps) {
                   <Activity
                     size={22}
                     strokeWidth={1.5}
-                    className="animate-pulse text-accent-primary"
+                    className="animate-pulse text-accent"
                   />
-                  <span className="text-xs font-medium text-accent-primary">
+                  <span className="text-xs font-medium text-accent">
                     Connecting…
                   </span>
                 </>
@@ -184,8 +196,8 @@ export function StreamStatCard({ stream, onExpand }: StreamStatCardProps) {
 
         {/* Live badge */}
         {isLive && (
-          <div className="absolute top-2 left-2">
-            <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded-md">
+          <div className="absolute top-2 left-2 z-10">
+            <div className="flex items-center gap-1.5 bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10">
               <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
               <span className="text-[9px] font-bold text-white uppercase tracking-widest">
                 Live
@@ -196,9 +208,9 @@ export function StreamStatCard({ stream, onExpand }: StreamStatCardProps) {
 
         {/* Density badge */}
         {isLive && densityStatus && (
-          <div className="absolute top-2 right-2">
+          <div className="absolute top-2 right-2 z-10">
             <div
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[9px] font-bold uppercase tracking-wider backdrop-blur-sm ${density.bg} ${density.text} ${density.border}`}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[9px] font-bold uppercase tracking-wider backdrop-blur-md ${density.bg} ${density.text} ${density.border}`}
             >
               <span
                 className={`w-1.5 h-1.5 rounded-full ${density.dot} ${
@@ -212,36 +224,40 @@ export function StreamStatCard({ stream, onExpand }: StreamStatCardProps) {
           </div>
         )}
 
-        {/* Expand button */}
+        {/* Expand button (top layer above gradient) */}
         {stream.status === "active" && (
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
               onExpand(stream.id);
             }}
-            className="absolute bottom-2 right-2 w-7 h-7 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center text-white/70 hover:text-white hover:bg-black/80 opacity-0 group-hover:opacity-100 transition-all"
+            className="absolute bottom-2 right-2 z-20 w-7 h-7 rounded-lg bg-black/70 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-black hover:bg-accent transition-all duration-200 shadow-md cursor-pointer"
             title="Lihat detail penuh"
           >
-            <Maximize2 size={12} />
+            <Maximize2 size={13} />
           </button>
         )}
 
-        {/* Bottom gradient */}
-        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-surface-1 to-transparent" />
+        {/* Bottom gradient — pointer-events-none so it never blocks clicks */}
+        <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-card to-transparent pointer-events-none z-0" />
       </div>
 
       {/* ── Info & Stats ── */}
       <div className="flex flex-col gap-3 p-4 flex-1">
         {/* Location name + status */}
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+          <div
+            className={`min-w-0 ${stream.status === "active" ? "cursor-pointer" : ""}`}
+            onClick={handleOpenDetail}
+          >
             <h3
-              className="text-sm font-semibold text-text-primary leading-tight truncate"
+              className="text-sm font-semibold text-white leading-tight truncate hover:text-accent transition-colors"
               title={stream.location_name}
             >
               {stream.location_name}
             </h3>
-            <span className="text-[10px] text-text-muted capitalize font-medium">
+            <span className="text-[10px] text-secondary capitalize font-medium">
               {stream.stream_type}
             </span>
           </div>
@@ -251,9 +267,9 @@ export function StreamStatCard({ stream, onExpand }: StreamStatCardProps) {
             {isLive ? (
               <Wifi size={13} className="text-emerald-400" />
             ) : isOffline ? (
-              <WifiOff size={13} className="text-text-muted" />
+              <WifiOff size={13} className="text-secondary" />
             ) : (
-              <Wifi size={13} className="text-text-muted animate-pulse" />
+              <Wifi size={13} className="text-secondary animate-pulse" />
             )}
           </div>
         </div>
@@ -262,11 +278,11 @@ export function StreamStatCard({ stream, onExpand }: StreamStatCardProps) {
         {isLive ? (
           <>
             {/* Total vehicle highlight */}
-            <div className="flex items-center justify-between bg-surface-2 rounded-xl px-3 py-2">
-              <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">
+            <div className="flex items-center justify-between bg-black/30 rounded-xl px-3 py-2 border border-default">
+              <span className="text-[10px] font-semibold text-secondary uppercase tracking-wider">
                 Total Kendaraan
               </span>
-              <span className="text-base font-bold text-text-primary">
+              <span className="text-base font-bold text-white">
                 {totalVehicles}
               </span>
             </div>
@@ -298,21 +314,19 @@ export function StreamStatCard({ stream, onExpand }: StreamStatCardProps) {
                 color="#34D399"
               />
             </div>
-
-
           </>
         ) : isOffline ? (
-          <div className="flex items-center gap-2 bg-surface-2 rounded-xl px-3 py-2.5">
-            <WifiOff size={13} className="text-text-muted" />
-            <span className="text-xs text-text-muted">Stream offline</span>
+          <div className="flex items-center gap-2 bg-black/30 rounded-xl px-3 py-2.5 border border-default">
+            <WifiOff size={13} className="text-secondary" />
+            <span className="text-xs text-secondary">Stream offline</span>
           </div>
         ) : (
           /* Skeleton loading */
           <div className="flex flex-col gap-2 animate-pulse">
-            <div className="h-8 bg-surface-2 rounded-xl" />
+            <div className="h-8 bg-white/5 rounded-xl" />
             <div className="grid grid-cols-4 gap-1">
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-12 bg-surface-2 rounded-lg" />
+                <div key={i} className="h-12 bg-white/5 rounded-lg" />
               ))}
             </div>
           </div>

@@ -6,11 +6,12 @@ import { PageLayout } from "@/presentation/components/PageLayout";
 import { historyService } from "@/infrastructure/services/historyService";
 import { streamService } from "@/infrastructure/services/streamService";
 import type { HistoryRecord, Stream } from "@/domain/entities/TrafficMetric";
+import { CustomSelect } from "@/presentation/ui/CustomSelect";
+import type { DropdownOption } from "@/presentation/ui/CustomSelect";
+import { DENSITY_CHART_COLORS } from "@/shared/constants/densityStatus";
 import {
   LineChart,
   Line,
-  ScatterChart,
-  Scatter,
   BarChart,
   Bar,
   XAxis,
@@ -23,15 +24,13 @@ import {
   PieChart,
   Pie,
 } from "recharts";
-import { BarChart3, Loader2, AlertTriangle, TrendingUp, Users, Car } from "lucide-react";
+import { BarChart3, Loader2, AlertTriangle, TrendingUp, Car } from "lucide-react";
 
-// Density status → color
-const statusColors: Record<string, string> = {
-  "Low Density": "#34d399",     // emerald
-  "Medium Density": "#fbbf24",  // yellow
-  "High Density": "#f87171",    // red
-  Anomaly: "#fb923c",           // orange
-};
+
+// Use shared chart colors
+const statusColors = DENSITY_CHART_COLORS;
+
+
 
 const CHART_STYLE = {
   background: "transparent",
@@ -40,13 +39,14 @@ const CHART_STYLE = {
 
 const tooltipStyle = {
   contentStyle: {
-    background: "#18181B",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "12px",
+    background: "#171717",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "8px",
     fontSize: 12,
-    color: "#fff",
+    color: "#FFFFFF",
+    boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
   },
-  labelStyle: { color: "#a3a3a3" },
+  labelStyle: { color: "#8B949E" },
 };
 
 function KpiCard({
@@ -63,18 +63,18 @@ function KpiCard({
   color: string;
 }) {
   return (
-    <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-5">
+    <div className="bg-[#171717] border border-white/[0.08] rounded-xl p-5 card-interactive">
       <div className="flex items-start justify-between mb-3">
         <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center"
-          style={{ background: `${color}18`, border: `1px solid ${color}30` }}
+          className="w-9 h-9 rounded-lg flex items-center justify-center"
+          style={{ background: `${color}15`, border: `1px solid ${color}30` }}
         >
           <span style={{ color }}>{icon}</span>
         </div>
       </div>
-      <p className="text-2xl font-bold text-text-primary">{value}</p>
-      <p className="text-xs font-medium text-text-secondary mt-1">{label}</p>
-      {sub && <p className="text-xs text-text-secondary/50 mt-0.5">{sub}</p>}
+      <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
+      <p className="text-xs font-semibold text-secondary uppercase tracking-wider mt-1">{label}</p>
+      {sub && <p className="text-[11px] text-secondary/70 mt-0.5">{sub}</p>}
     </div>
   );
 }
@@ -111,9 +111,7 @@ export default function AnalyticsPage() {
     fetchData();
   }, [fetchData]);
 
-  // --- Prepare chart data ---
-
-  // Trend chart: last 100 records, formatted timestamps
+  // Trend chart: last 100 records
   const trendData = history.slice(0, 100).reverse().map((r, i) => ({
     time: new Date(r.recorded_at).toLocaleTimeString("id-ID", {
       hour: "2-digit",
@@ -156,7 +154,7 @@ export default function AnalyticsPage() {
   const vehiclePieData = Object.entries(vehicleTotals).map(([name, value]) => ({
     name,
     value,
-    color: name === "Mobil" ? "#60a5fa" : name === "Motor" ? "#34d399" : name === "Bus" ? "#fbbf24" : "#f87171",
+    color: name === "Mobil" ? "#E879F9" : name === "Motor" ? "#A78BFA" : name === "Bus" ? "#34D399" : "#60A5FA",
   }));
 
   // Bar chart: avg vehicle by hour
@@ -183,36 +181,43 @@ export default function AnalyticsPage() {
       ? ((highCount / history.length) * 100).toFixed(1)
       : "0";
 
+  const streamOptions: DropdownOption[] = [
+    { value: "", label: "All Streams", dotColor: "bg-white/40" },
+    ...streams.map((s) => ({
+      value: s.id,
+      label: s.location_name,
+      dotColor: s.status === "active" ? "bg-status-success" : "bg-status-danger",
+      badge: s.stream_type,
+    })),
+  ];
+
   return (
     <PageLayout>
-      <div className="max-w-7xl mx-auto pt-20">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight">
-              Analytics & Clustering
+            <h1 className="text-xl font-bold text-white tracking-tight">
+              Analytics & Density Insights
             </h1>
-            <p className="text-sm text-text-secondary mt-1">
-              Trend analysis and cluster distribution from monitoring history.
+            <p className="text-xs text-secondary mt-1">
+              Trend analysis and traffic distribution powered by YOLOv8 vision data.
             </p>
           </div>
-          <select
+
+          <CustomSelect
             value={filterStreamId}
-            onChange={(e) => setFilterStreamId(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-text-primary focus:outline-none focus:border-accent-primary/50 transition-all"
-          >
-            <option value="">All Streams</option>
-            {streams.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.location_name}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterStreamId}
+            options={streamOptions}
+            placeholder="Select Stream"
+            title="Filter by Stream Node"
+            minWidth="w-64"
+          />
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-6 flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-sm">
+          <div className="flex items-center gap-2 bg-status-danger/10 border border-status-danger/20 text-status-danger p-3 rounded-lg text-xs">
             <AlertTriangle size={14} />
             {error}
           </div>
@@ -221,92 +226,92 @@ export default function AnalyticsPage() {
         {/* Loading */}
         {isLoading && (
           <div className="flex items-center justify-center py-24">
-            <Loader2 size={28} className="animate-spin text-accent-primary" />
+            <Loader2 size={28} className="animate-spin text-accent" />
           </div>
         )}
 
         {!isLoading && (
           <>
             {/* KPI Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <KpiCard
                 label="Total Records"
-                value={history.length.toLocaleString()}
+                value={history.length.toLocaleString("id-ID")}
                 sub="in selected range"
                 icon={<BarChart3 size={16} />}
-                color="#E879F9"
+                color="#3ECF8E"
               />
               <KpiCard
                 label="Avg. Vehicle Count"
                 value={avgVehicle}
-                sub="per frame"
+                sub="per processed frame"
                 icon={<Car size={16} />}
-                color="#60a5fa"
+                color="#60A5FA"
               />
               <KpiCard
                 label="High / Anomaly Rate"
                 value={`${anomalyPct}%`}
                 sub={`${highCount} of ${history.length} records`}
                 icon={<TrendingUp size={16} />}
-                color="#f87171"
+                color="#F87171"
               />
             </div>
 
             {history.length === 0 ? (
-              <div className="text-center py-20 bg-black/30 border border-white/8 rounded-2xl">
-                <BarChart3 size={36} className="text-text-secondary/30 mx-auto mb-3" />
-                <p className="text-text-secondary font-medium">No data to visualize</p>
-                <p className="text-sm text-text-secondary/60 mt-1">
-                  Start monitoring a stream to generate analytics data.
+              <div className="text-center py-16 bg-card border border-white/[0.08] rounded-2xl">
+                <BarChart3 size={32} className="text-secondary/40 mx-auto mb-3" />
+                <p className="text-white text-sm font-semibold">No data to visualize</p>
+                <p className="text-xs text-secondary mt-1">
+                  Start an active CCTV stream to generate density analytics.
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Trend Chart */}
-                <div className="lg:col-span-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-                  <h2 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
-                    <TrendingUp size={14} className="text-accent-primary" />
-                    Vehicle Trend (Last 100 Records)
+                <div className="lg:col-span-2 bg-card border border-white/[0.08] rounded-2xl p-5 card-interactive">
+                  <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <TrendingUp size={14} className="text-accent" />
+                    <span>Vehicle Count Trend (Last 100 Frames)</span>
                   </h2>
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={trendData} style={CHART_STYLE}>
                       <CartesianGrid
                         strokeDasharray="3 3"
-                        stroke="rgba(255,255,255,0.05)"
+                        stroke="rgba(255,255,255,0.06)"
                       />
                       <XAxis
                         dataKey="time"
-                        tick={{ fill: "#a3a3a3", fontSize: 10 }}
+                        tick={{ fill: "#8B949E", fontSize: 10 }}
                         interval={Math.floor(trendData.length / 6)}
                         axisLine={false}
                         tickLine={false}
                       />
                       <YAxis
-                        tick={{ fill: "#a3a3a3", fontSize: 10 }}
+                        tick={{ fill: "#8B949E", fontSize: 10 }}
                         axisLine={false}
                         tickLine={false}
                       />
                       <Tooltip {...tooltipStyle} />
                       <Legend
-                        wrapperStyle={{ fontSize: 11, color: "#a3a3a3" }}
+                        wrapperStyle={{ fontSize: 11, color: "#8B949E" }}
                       />
                       <Line
                         type="monotone"
                         dataKey="vehicle"
-                        stroke="#60a5fa"
+                        stroke="#3ECF8E"
                         strokeWidth={2}
                         dot={false}
-                        name="Vehicle"
+                        name="Vehicle Count"
                       />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
 
                 {/* Distribution Pie */}
-                <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-                  <h2 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-accent-primary/60" />
-                    Cluster Distribution
+                <div className="bg-card border border-white/[0.08] rounded-2xl p-5 card-interactive">
+                  <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-accent" />
+                    <span>Density Cluster Distribution</span>
                   </h2>
                   <div className="flex items-center gap-6">
                     <ResponsiveContainer width={160} height={160}>
@@ -338,10 +343,10 @@ export default function AnalyticsPage() {
                             style={{ background: color }}
                           />
                           <div>
-                            <p className="text-xs font-medium text-text-primary leading-none">
+                            <p className="text-xs font-semibold text-white leading-none">
                               {name}
                             </p>
-                            <p className="text-xs text-text-secondary/60 mt-0.5">
+                            <p className="text-[11px] text-secondary mt-0.5">
                               {value} records
                             </p>
                           </div>
@@ -352,10 +357,10 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Vehicle Type Distribution */}
-                <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-                  <h2 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-accent-primary/60" />
-                    Vehicle Type Breakdown
+                <div className="bg-card border border-white/[0.08] rounded-2xl p-5 card-interactive">
+                  <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-accent" />
+                    <span>Vehicle Class Breakdown</span>
                   </h2>
                   <div className="flex items-center gap-6">
                     <ResponsiveContainer width={160} height={160}>
@@ -387,10 +392,10 @@ export default function AnalyticsPage() {
                             style={{ background: color }}
                           />
                           <div>
-                            <p className="text-xs font-medium text-text-primary leading-none">
+                            <p className="text-xs font-semibold text-white leading-none">
                               {name}
                             </p>
-                            <p className="text-xs text-text-secondary/60 mt-0.5">
+                            <p className="text-[11px] text-secondary mt-0.5">
                               {value.toLocaleString("id-ID")} units
                             </p>
                           </div>
@@ -401,36 +406,36 @@ export default function AnalyticsPage() {
                 </div>
 
                 {/* Hourly Bar Chart */}
-                <div className="lg:col-span-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-                  <h2 className="text-sm font-semibold text-text-primary mb-4 flex items-center gap-2">
-                    <BarChart3 size={14} className="text-accent-primary" />
-                    Average Vehicle Activity by Hour of Day
+                <div className="lg:col-span-2 bg-card border border-white/[0.08] rounded-2xl p-5 card-interactive">
+                  <h2 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <BarChart3 size={14} className="text-accent" />
+                    <span>Average Vehicle Traffic by Hour</span>
                   </h2>
                   <ResponsiveContainer width="100%" height={200}>
                     <BarChart data={hourlyData} style={CHART_STYLE} barSize={10}>
                       <CartesianGrid
                         strokeDasharray="3 3"
-                        stroke="rgba(255,255,255,0.05)"
+                        stroke="rgba(255,255,255,0.06)"
                         vertical={false}
                       />
                       <XAxis
                         dataKey="hour"
-                        tick={{ fill: "#a3a3a3", fontSize: 9 }}
+                        tick={{ fill: "#8B949E", fontSize: 9 }}
                         axisLine={false}
                         tickLine={false}
                         interval={1}
                       />
                       <YAxis
-                        tick={{ fill: "#a3a3a3", fontSize: 10 }}
+                        tick={{ fill: "#8B949E", fontSize: 10 }}
                         axisLine={false}
                         tickLine={false}
                       />
                       <Tooltip {...tooltipStyle} />
-                      <Legend wrapperStyle={{ fontSize: 11, color: "#a3a3a3" }} />
+                      <Legend wrapperStyle={{ fontSize: 11, color: "#8B949E" }} />
                       <Bar
                         dataKey="avgVehicle"
-                        fill="#60a5fa"
-                        fillOpacity={0.8}
+                        fill="#3ECF8E"
+                        fillOpacity={0.85}
                         radius={[4, 4, 0, 0]}
                         name="Avg Vehicle"
                       />

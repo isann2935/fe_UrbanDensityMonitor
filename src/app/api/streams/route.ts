@@ -1,13 +1,15 @@
 // src/app/api/streams/route.ts
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/infrastructure/config/supabaseServer";
+import { supabaseServer } from "@/infrastructure/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
     const { data, error } = await supabaseServer
       .from("streams")
       .select("*")
-      .order("created_at", { ascending: false });
+      .order("location_name", { ascending: true });
 
     if (error) {
       return NextResponse.json(

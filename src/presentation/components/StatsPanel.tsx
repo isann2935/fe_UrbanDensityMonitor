@@ -16,16 +16,16 @@ export function StatsPanel({ metrics, totalVehicles }: StatsPanelProps) {
   return (
     <div className="flex flex-col gap-4">
       {/* Section: Traffic Flow */}
-      <div className="bg-surface-1 border border-border-default rounded-2xl p-5">
+      <div className="bg-card border border-white/[0.08] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-accent-muted flex items-center justify-center">
-              <Activity size={15} className="text-accent-primary" />
+            <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
+              <Activity size={15} className="text-accent" />
             </div>
-            <h2 className="text-sm font-semibold text-text-primary">Traffic Flow</h2>
+            <h2 className="text-sm font-semibold text-white">Traffic Flow</h2>
           </div>
           <div className="text-right">
-            <p className="text-[10px] text-text-muted uppercase tracking-wider font-medium">Total</p>
+            <p className="text-[10px] text-secondary uppercase tracking-wider font-medium">Total</p>
             <p className="text-lg font-bold text-gradient">
               {totalVehicles.toLocaleString("id-ID")}
             </p>

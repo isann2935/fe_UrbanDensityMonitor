@@ -1,11 +1,3 @@
 // src/infrastructure/config/supabaseServer.ts
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-project.supabase.co";
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  "placeholder-key";
-
-export const supabaseServer = createClient(supabaseUrl, supabaseKey);
+// Re-export from new canonical location. Update imports to @/infrastructure/supabase/server
+export { supabaseServer } from "@/infrastructure/supabase/server";

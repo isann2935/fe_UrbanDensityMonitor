@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import AuthProvider from "@/presentation/components/AuthProvider";
+import AuthProvider from "@/presentation/providers/AuthProvider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -11,9 +11,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Urban Density — ML Vision Dashboard",
+  title: "Urban Density",
   description:
-    "Real-time urban density monitoring powered by CCTV ML inference",
+    "Real-time urban density monitoring",
 };
 
 export default function RootLayout({
@@ -22,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" className={inter.variable}>
-      <body className={inter.className}>
+    <html lang="id" className={`dark ${inter.variable}`}>
+      <body className={`${inter.className} bg-base text-primary min-h-screen antialiased selection:bg-accent/20 selection:text-accent`}>
         <AuthProvider>
           {children}
         </AuthProvider>

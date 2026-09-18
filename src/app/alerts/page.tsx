@@ -6,8 +6,10 @@ import { PageLayout } from "@/presentation/components/PageLayout";
 import { alertService } from "@/infrastructure/services/alertService";
 import { streamService } from "@/infrastructure/services/streamService";
 import type { AlertRecord, Stream } from "@/domain/entities/TrafficMetric";
+import { CustomSelect } from "@/presentation/ui/CustomSelect";
+import type { DropdownOption } from "@/presentation/ui/CustomSelect";
+import { ALERT_TYPE_BADGE } from "@/shared/constants/densityStatus";
 import {
-  Bell,
   AlertTriangle,
   CheckCircle2,
   Filter,
@@ -17,20 +19,9 @@ import {
   Check,
 } from "lucide-react";
 
-const alertTypeBadge: Record<string, { bg: string; text: string; border: string; icon: string }> = {
-  "High Density": {
-    bg: "bg-red-500/10",
-    text: "text-red-400",
-    border: "border-red-500/30",
-    icon: "🚨",
-  },
-  "Human Anomaly": {
-    bg: "bg-orange-500/10",
-    text: "text-orange-400",
-    border: "border-orange-500/30",
-    icon: "🚨",
-  },
-};
+// Local alias for shared constant
+const alertTypeBadge = ALERT_TYPE_BADGE;
+
 
 function timeAgo(isoString: string): string {
   const diffMs = Date.now() - new Date(isoString).getTime();
@@ -102,8 +93,7 @@ export default function AlertsPage() {
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterStreamId, filterType, filterRead]);
+  }, [filterStreamId, filterType, filterRead, fetchAlerts]);
 
   const handleMarkRead = async (id: string) => {
     setMarkingId(id);
@@ -121,83 +111,113 @@ export default function AlertsPage() {
 
   const unreadCount = alerts.filter((a) => !a.is_read).length;
 
+  // Options for Dropdowns
+  const typeOptions: DropdownOption[] = [
+    { value: "", label: "All Types", dotColor: "bg-white/40" },
+    { value: "High Density", label: "High Density", dotColor: "bg-status-danger" },
+    { value: "Human Anomaly", label: "Human Anomaly", dotColor: "bg-status-warning" },
+  ];
+
+  const streamOptions: DropdownOption[] = [
+    { value: "", label: "All Streams", dotColor: "bg-white/40" },
+    ...streams.map((s) => ({
+      value: s.id,
+      label: s.location_name,
+      dotColor: s.status === "active" ? "bg-status-success" : "bg-status-danger",
+      badge: s.stream_type,
+    })),
+  ];
+
+  const readOptions: DropdownOption[] = [
+    { value: "", label: "All Status", dotColor: "bg-white/40" },
+    { value: "false", label: "Unread", dotColor: "bg-status-danger" },
+    { value: "true", label: "Read", dotColor: "bg-white/30" },
+  ];
+
   return (
     <PageLayout>
-      <div className="max-w-5xl mx-auto pt-20">
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+              <h1 className="text-xl font-bold text-white tracking-tight">
                 Alert Notifications
               </h1>
               {unreadCount > 0 && (
-                <span className="px-2.5 py-0.5 rounded-full bg-red-500/20 border border-red-500/30 text-xs font-bold text-red-400">
+                <span className="px-2 py-0.5 rounded-full bg-status-danger/15 border border-status-danger/30 text-[11px] font-bold text-status-danger">
                   {unreadCount} unread
                 </span>
               )}
             </div>
-            <p className="text-sm text-text-secondary mt-1">
-              Real-time alerts from ML density detection. Auto-refreshes every 30s.
+            <p className="text-xs text-secondary mt-1">
+              Real-time anomalies and high traffic density detections. Auto-refreshes every 30s.
             </p>
           </div>
           <button
             onClick={() => fetchAlerts(true)}
             disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-sm text-text-secondary transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-card hover:bg-card/80 border border-white/[0.08] rounded-lg text-xs font-medium text-secondary hover:text-white transition-all disabled:opacity-50 shadow-sm"
           >
-            <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-            Refresh
+            <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
+            <span>Refresh</span>
           </button>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-3 mb-6 p-4 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl">
-          <div className="flex items-center gap-2 text-xs text-text-secondary">
-            <Filter size={13} />
+        {/* Filters — Custom Dropdowns matching Header style */}
+        <div className="flex flex-wrap items-center gap-3 p-3.5 bg-card border border-white/[0.08] rounded-2xl shadow-sm">
+          <div className="flex items-center gap-1.5 text-xs text-secondary font-medium mr-1">
+            <Filter size={13} className="text-accent" />
             <span>Filter:</span>
           </div>
 
-          {/* Alert type */}
-          <select
+          {/* Alert type dropdown */}
+          <CustomSelect
             value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary/50 transition-all"
-          >
-            <option value="">All Types</option>
-            <option value="High Density">High Density</option>
-            <option value="Human Anomaly">Human Anomaly</option>
-          </select>
+            onChange={setFilterType}
+            options={typeOptions}
+            placeholder="Select Type"
+            title="Filter by Type"
+            minWidth="w-52"
+          />
 
-          {/* Stream */}
-          <select
+          {/* Stream dropdown */}
+          <CustomSelect
             value={filterStreamId}
-            onChange={(e) => setFilterStreamId(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary/50 transition-all"
-          >
-            <option value="">All Streams</option>
-            {streams.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.location_name}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterStreamId}
+            options={streamOptions}
+            placeholder="Select Stream"
+            title="Filter by Stream Node"
+            minWidth="w-64"
+          />
 
-          {/* Read status */}
-          <select
+          {/* Read status dropdown */}
+          <CustomSelect
             value={filterRead}
-            onChange={(e) => setFilterRead(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary/50 transition-all"
-          >
-            <option value="">All Status</option>
-            <option value="false">Unread</option>
-            <option value="true">Read</option>
-          </select>
+            onChange={setFilterRead}
+            options={readOptions}
+            placeholder="Select Status"
+            title="Filter by Read Status"
+            minWidth="w-48"
+          />
+
+          {(filterType || filterStreamId || filterRead) && (
+            <button
+              onClick={() => {
+                setFilterType("");
+                setFilterStreamId("");
+                setFilterRead("");
+              }}
+              className="text-xs text-secondary hover:text-accent font-medium transition-colors ml-auto px-2 py-1"
+            >
+              Clear filters
+            </button>
+          )}
         </div>
 
         {/* Error */}
         {error && (
-          <div className="mb-4 flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-sm">
+          <div className="flex items-center gap-2 bg-status-danger/10 border border-status-danger/20 text-status-danger p-3 rounded-lg text-xs">
             <AlertTriangle size={14} />
             {error}
           </div>
@@ -206,69 +226,65 @@ export default function AlertsPage() {
         {/* Loading */}
         {isLoading && alerts.length === 0 && (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-accent-primary" />
+            <Loader2 size={24} className="animate-spin text-accent" />
           </div>
         )}
 
         {/* Empty */}
         {!isLoading && alerts.length === 0 && !error && (
-          <div className="text-center py-20 bg-black/30 border border-white/8 rounded-2xl">
-            <BellOff size={36} className="text-text-secondary/30 mx-auto mb-3" />
-            <p className="text-text-secondary font-medium">No alerts</p>
-            <p className="text-sm text-text-secondary/60 mt-1">
-              Alerts will appear here when High Density or Anomaly is detected.
+          <div className="text-center py-16 bg-card border border-white/[0.08] rounded-2xl">
+            <BellOff size={32} className="text-secondary/40 mx-auto mb-3" />
+            <p className="text-white text-sm font-semibold">No alerts recorded</p>
+            <p className="text-xs text-secondary mt-1">
+              Alerts will automatically trigger when density thresholds or anomalies are detected.
             </p>
           </div>
         )}
 
-        {/* Alert cards */}
+        {/* Alert cards list */}
         {alerts.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {alerts.map((alert) => {
               const cfg =
                 alertTypeBadge[alert.alert_type] ?? alertTypeBadge["High Density"];
               return (
                 <div
                   key={alert.id}
-                  className={`flex items-start gap-4 p-4 rounded-2xl border transition-all ${
+                  className={`flex items-start gap-4 p-4 rounded-2xl border transition-all card-interactive ${
                     alert.is_read
-                      ? "bg-black/30 border-white/8 opacity-60"
-                      : `${cfg.bg} ${cfg.border} border`
+                      ? "bg-card/60 border-white/[0.06] opacity-60"
+                      : "bg-card border-white/[0.08]"
                   }`}
                 >
-                  {/* Icon */}
-                  <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-base ${cfg.bg} border ${cfg.border}`}
-                  >
-                    {cfg.icon}
-                  </div>
-
+                  
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span
-                        className={`text-xs font-bold uppercase tracking-wider ${cfg.text}`}
+                        className={`text-[10px] font-bold uppercase tracking-wider ${cfg.text}`}
                       >
                         {alert.alert_type}
                       </span>
                       {alert.is_read ? (
-                        <span className="text-xs text-text-secondary/50 flex items-center gap-1">
+                        <span className="text-[11px] text-secondary flex items-center gap-1">
                           <CheckCircle2 size={11} />
                           Read
                         </span>
                       ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-status-danger" />
                       )}
                     </div>
-                    <p className="text-sm text-text-primary mt-1 leading-snug">
+                    <p className="text-sm font-medium text-white mt-1 leading-snug">
                       {alert.alert_message}
                     </p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-text-secondary">
+                    <div className="flex items-center gap-3 mt-2 text-[11px] text-secondary">
                       {alert.stream_location && (
-                        <span>📍 {alert.stream_location}</span>
+                        <span>{alert.stream_location}</span>
                       )}
+                      <span>·</span>
                       <span>{timeAgo(alert.created_at)}</span>
-                      <span className="font-mono text-text-secondary/50">
+                      <span>·</span>
+                      <span className="font-mono text-secondary/70">
                         {new Date(alert.created_at).toLocaleString("id-ID")}
                       </span>
                     </div>
@@ -279,7 +295,7 @@ export default function AlertsPage() {
                     <button
                       onClick={() => handleMarkRead(alert.id)}
                       disabled={markingId === alert.id}
-                      className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-white/10 text-xs text-text-secondary hover:text-text-primary hover:bg-white/5 transition-all disabled:opacity-50"
+                      className="flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-white/[0.08] text-xs font-medium text-secondary hover:text-white hover:bg-white/[0.04] transition-all disabled:opacity-50"
                       title="Mark as read"
                     >
                       {markingId === alert.id ? (
@@ -287,7 +303,7 @@ export default function AlertsPage() {
                       ) : (
                         <Check size={12} />
                       )}
-                      Mark read
+                      <span>Mark read</span>
                     </button>
                   )}
                 </div>
@@ -298,8 +314,8 @@ export default function AlertsPage() {
 
         {/* Pagination */}
         {total > PAGE_SIZE && (
-          <div className="flex items-center justify-between mt-6">
-            <span className="text-xs text-text-secondary">
+          <div className="flex items-center justify-between pt-2">
+            <span className="text-xs text-secondary font-mono">
               Showing {offset + 1}–{Math.min(offset + PAGE_SIZE, total)} of{" "}
               {total}
             </span>
@@ -310,7 +326,7 @@ export default function AlertsPage() {
                   fetchAlerts();
                 }}
                 disabled={offset === 0 || isLoading}
-                className="px-4 py-2 rounded-xl border border-white/10 text-xs text-text-secondary hover:bg-white/5 transition-all disabled:opacity-40"
+                className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs font-medium text-secondary hover:bg-white/[0.04] hover:text-white transition-all disabled:opacity-40"
               >
                 Previous
               </button>
@@ -320,7 +336,7 @@ export default function AlertsPage() {
                   fetchAlerts();
                 }}
                 disabled={offset + PAGE_SIZE >= total || isLoading}
-                className="px-4 py-2 rounded-xl border border-white/10 text-xs text-text-secondary hover:bg-white/5 transition-all disabled:opacity-40"
+                className="px-3 py-1.5 rounded-lg border border-white/[0.08] text-xs font-medium text-secondary hover:bg-white/[0.04] hover:text-white transition-all disabled:opacity-40"
               >
                 Next
               </button>

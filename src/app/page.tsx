@@ -74,7 +74,7 @@ export default function Page() {
   const inactiveStreams = streams.filter((s) => s.status !== "active");
 
   return (
-    <div className="flex min-h-screen bg-app-bg">
+    <div className="flex min-h-screen bg-base bg-grid-subtle">
       {/* Sidebar */}
       <Sidebar />
 
@@ -118,17 +118,17 @@ export default function Page() {
                 <Zap size={20} className="text-status-danger" />
               </div>
               <p className="text-status-danger font-semibold mb-2">Connection Error</p>
-              <p className="text-sm text-text-muted mb-4">{error}</p>
+              <p className="text-sm text-secondary mb-4">{error}</p>
               <div className="flex items-center justify-center gap-2">
                 <button
                   onClick={() => setActiveStreamId(null)}
-                  className="px-4 py-2 bg-surface-2 border border-border-default rounded-xl text-sm font-medium text-text-primary hover:bg-surface-3 transition-all"
+                  className="px-4 py-2 bg-card border border-white/[0.08] rounded-lg text-sm font-medium text-white hover:bg-card/60 transition-all"
                 >
                   Kembali ke Dashboard
                 </button>
                 <button
                   onClick={refetch}
-                  className="px-5 py-2.5 bg-accent-muted border border-accent-primary/30 rounded-xl text-sm font-medium text-accent-primary hover:bg-accent-primary/20 transition-all"
+                  className="px-5 py-2.5 bg-accent/15 border border-accent/30 rounded-lg text-sm font-medium text-accent hover:bg-accent/25 transition-all"
                 >
                   Coba Lagi
                 </button>
@@ -149,7 +149,7 @@ export default function Page() {
                 <div className="flex items-center justify-between mb-3">
                   <button
                     onClick={() => setActiveStreamId(null)}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface-1 hover:bg-surface-2 border border-border-default hover:border-accent-primary/30 text-xs font-semibold text-text-secondary hover:text-accent-primary transition-all duration-200 shadow-sm group"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-card hover:bg-card/60 border border-white/[0.08] hover:border-accent/30 text-xs font-semibold text-secondary hover:text-accent transition-all duration-200 shadow-sm group"
                   >
                     <ArrowLeft
                       size={14}
@@ -158,7 +158,7 @@ export default function Page() {
                     <span>Kembali ke Dashboard</span>
                   </button>
 
-                  <div className="flex items-center gap-2 text-xs text-text-muted">
+                  <div className="flex items-center gap-2 text-xs text-secondary">
                     <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
                     <span className="font-medium">
                       {selectedStream?.location_name}
@@ -169,33 +169,12 @@ export default function Page() {
                 <div className="h-[420px]">
                   <MapBackground frameBase64={frameBase64} />
                 </div>
-
-                {/* Scanning indicator */}
-                <div className="flex items-center gap-4 mt-4 px-1">
-                  <div className="flex items-center gap-2 text-xs text-text-muted">
-                    <span className="w-1.5 h-1.5 rounded-full bg-accent-primary animate-pulse-dot" />
-                    <span className="font-medium">Scanning Zone A–G</span>
-                  </div>
-                  <span className="text-text-muted/20">·</span>
-                  <span className="flex items-center gap-1.5 text-xs text-text-muted">
-                    <Clock size={11} />
-                    {new Date().toLocaleDateString("id-ID", {
-                      weekday: "short",
-                      day: "numeric",
-                      month: "short",
-                    })}
-                  </span>
-                  <span className="text-text-muted/20">·</span>
-                  <span className="text-[11px] text-text-muted font-mono">
-                    ML Model: YOLOv8 · Python FastAPI
-                  </span>
-                </div>
               </div>
 
               {/* Right column — Stats + Alerts */}
-              <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-140px)]">
+              <div className="space-y-4">
                 <StatsPanel metrics={data.metrics} totalVehicles={totalVehicles} />
-                <AlertPanel alerts={data.alerts} />
+                <AlertPanel alerts={data.alerts} maxHeight="max-h-[260px]" />
               </div>
             </div>
           </div>
@@ -211,14 +190,14 @@ export default function Page() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
               <div>
                 <div className="flex items-center gap-2.5 mb-1">
-                  <div className="w-7 h-7 rounded-lg bg-accent-muted flex items-center justify-center">
-                    <LayoutGrid size={13} className="text-accent-primary" />
+                  <div className="w-7 h-7 rounded-lg bg-accent/15 flex items-center justify-center">
+                    <LayoutGrid size={13} className="text-accent" />
                   </div>
-                  <h1 className="text-xl font-bold text-text-primary tracking-tight">
+                  <h1 className="text-xl font-bold text-white tracking-tight">
                     Live Dashboard
                   </h1>
                 </div>
-                <p className="text-sm text-text-muted">
+                <p className="text-sm text-secondary">
                   Semua CCTV berjalan secara real-time dan paralel
                 </p>
               </div>
@@ -227,19 +206,19 @@ export default function Page() {
               <div className="relative w-full md:w-80">
                 <Search
                   size={16}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-muted"
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary"
                 />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari jalan / nama CCTV..."
-                  className="w-full bg-surface-1 border border-border-default rounded-xl pl-10 pr-10 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent-primary focus:ring-1 focus:ring-accent-primary transition-all shadow-sm"
+                  className="w-full bg-card border border-white/[0.08] rounded-lg pl-10 pr-10 py-2.5 text-sm text-white placeholder:text-secondary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all shadow-sm"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-white transition-colors"
                   >
                     <X size={15} />
                   </button>
@@ -254,12 +233,12 @@ export default function Page() {
                   label: "Total CCTV",
                   value: streams.length,
                   icon: Video,
-                  color: "text-text-primary",
-                  iconColor: "text-accent-primary",
-                  iconBg: "bg-accent-muted",
+                  color: "text-white",
+                  iconColor: "text-accent",
+                  iconBg: "bg-accent/15",
                 },
                 {
-                  label: "Live & Aktif",
+                  label: "Active",
                   value: activeStreams.length,
                   icon: Wifi,
                   color: "text-emerald-400",
@@ -270,22 +249,22 @@ export default function Page() {
                   label: "Offline",
                   value: inactiveStreams.length,
                   icon: Activity,
-                  color: "text-text-muted",
-                  iconColor: "text-text-muted",
-                  iconBg: "bg-surface-3",
+                  color: "text-secondary",
+                  iconColor: "text-secondary",
+                  iconBg: "bg-white/5",
                 },
                 {
                   label: "Hasil Pencarian",
                   value: filteredStreams.length,
                   icon: Search,
-                  color: "text-text-primary",
-                  iconColor: "text-text-secondary",
-                  iconBg: "bg-surface-3",
+                  color: "text-white",
+                  iconColor: "text-secondary",
+                  iconBg: "bg-white/5",
                 },
               ].map((stat) => (
                 <div
                   key={stat.label}
-                  className="bg-surface-1 border border-border-default rounded-xl px-4 py-3 flex items-center gap-3"
+                  className="bg-card border border-white/[0.08] rounded-2xl px-4 py-3 flex items-center gap-3"
                 >
                   <div
                     className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${stat.iconBg}`}
@@ -293,7 +272,7 @@ export default function Page() {
                     <stat.icon size={14} className={stat.iconColor} />
                   </div>
                   <div>
-                    <p className="text-[10px] text-text-muted uppercase tracking-wider font-semibold">
+                    <p className="text-[10px] text-secondary uppercase tracking-wider font-semibold">
                       {stat.label}
                     </p>
                     <p className={`text-lg font-bold leading-tight ${stat.color}`}>
@@ -317,16 +296,16 @@ export default function Page() {
               </div>
             ) : (
               /* Empty state */
-              <div className="text-center p-16 bg-surface-1 rounded-2xl border border-border-default">
-                <div className="w-16 h-16 rounded-2xl bg-surface-3 flex items-center justify-center mx-auto mb-4">
-                  <Search size={28} className="text-text-muted" strokeWidth={1.5} />
+              <div className="text-center p-16 bg-card rounded-2xl border border-white/[0.08]">
+                <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-4">
+                  <Search size={28} className="text-secondary" strokeWidth={1.5} />
                 </div>
-                <p className="text-text-secondary font-medium">
+                <p className="text-white font-medium">
                   {streams.length === 0
                     ? "Belum ada CCTV yang ditambahkan"
                     : "CCTV tidak ditemukan"}
                 </p>
-                <p className="text-sm text-text-muted mt-1">
+                <p className="text-sm text-secondary mt-1">
                   {streams.length === 0
                     ? "Tambahkan stream CCTV melalui menu Stream Management"
                     : `Tidak ada yang cocok dengan "${searchQuery}"`}
@@ -334,7 +313,7 @@ export default function Page() {
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery("")}
-                    className="mt-4 px-4 py-2 bg-surface-2 border border-border-default rounded-xl text-xs font-semibold text-text-primary hover:bg-surface-3 transition-colors"
+                    className="mt-4 px-4 py-2 bg-card border border-white/[0.08] rounded-lg text-xs font-semibold text-white hover:bg-white/5 transition-colors"
                   >
                     Tampilkan Semua CCTV
                   </button>

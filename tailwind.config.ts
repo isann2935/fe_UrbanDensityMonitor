@@ -10,61 +10,68 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // --- Industrial SaaS Palette ---
-        "app-bg": "#0F1117",
-        "surface-1": "#161B26",
-        "surface-2": "#1C2333",
-        "surface-3": "#232B3E",
-        "panel-bg": "#161B26",
-        "card-bg": "#1C2333",
+        // --- DESIGN.MD Palette (Supabase-identical) ---
+        // Backgrounds
+        base: "#0A0A0A",
+        card: "#171717",
 
-        // Accent: Teal / Cyan
-        "accent-primary": "#00D4AA",
-        "accent-hover": "#00E6BB",
-        "accent-soft": "#5EEAD4",
-        "accent-muted": "rgba(0, 212, 170, 0.15)",
-
-        // Secondary accent: Blue
-        "accent-blue": "#0EA5E9",
-        "accent-blue-soft": "#38BDF8",
+        // Accent: Mint Green — Supabase brand color
+        accent: {
+          DEFAULT: "#3ECF8E",
+          hover: "#34B87C",
+        },
 
         // Text
-        "text-primary": "#F1F5F9",
-        "text-secondary": "#94A3B8",
-        "text-muted": "#64748B",
+        primary: "#FFFFFF",
+        secondary: "#8B949E",
 
-        // Status
+        // Status (unchanged — not in spec)
         "status-success": "#34D399",
         "status-warning": "#FBBF24",
         "status-danger": "#F87171",
         "status-info": "#60A5FA",
 
-        // Borders
-        "border-subtle": "rgba(255, 255, 255, 0.06)",
-        "border-default": "rgba(255, 255, 255, 0.10)",
-        "border-strong": "rgba(255, 255, 255, 0.16)",
+        // Legacy aliases — keep so other pages don't break
+        "app-bg": "#0A0A0A",
+        "surface-1": "#171717",
+        "surface-2": "#1C1C1C",
+        "surface-3": "#252525",
+        "panel-bg": "#171717",
+        "card-bg": "#171717",
+        "accent-primary": "#3ECF8E",
+        "accent-hover": "#34B87C",
+        "accent-soft": "#3ECF8E",
+        "accent-muted": "rgba(62, 207, 142, 0.10)",
+        "accent-blue": "#3ECF8E",
+        "accent-blue-soft": "#3ECF8E",
+        "text-primary": "#FFFFFF",
+        "text-secondary": "#8B949E",
+        "text-muted": "#8B949E",
+        "border-subtle": "rgba(255,255,255,0.05)",
+        "border-default": "rgba(255,255,255,0.08)",
+        "border-strong": "rgba(255,255,255,0.14)",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
       },
       backgroundImage: {
         "grid-pattern":
-          "linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px)",
+          "linear-gradient(rgba(62,207,142,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(62,207,142,0.03) 1px, transparent 1px)",
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
-        "accent-gradient": "linear-gradient(135deg, #00D4AA 0%, #0EA5E9 100%)",
-        "accent-gradient-soft": "linear-gradient(135deg, rgba(0,212,170,0.15) 0%, rgba(14,165,233,0.15) 100%)",
+        "accent-gradient": "linear-gradient(135deg, #3ECF8E 0%, #34B87C 100%)",
+        "accent-gradient-soft": "linear-gradient(135deg, rgba(62,207,142,0.15) 0%, rgba(52,184,124,0.15) 100%)",
         "card-shine": "linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 50%)",
       },
       backgroundSize: {
         "grid-pattern": "40px 40px",
       },
       boxShadow: {
-        "card": "0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2)",
-        "card-hover": "0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,212,170,0.1)",
-        "card-glow": "0 0 20px rgba(0,212,170,0.08)",
-        "panel": "0 4px 16px rgba(0,0,0,0.3)",
-        "dropdown": "0 12px 36px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08)",
-        "inner-glow": "inset 0 1px 0 rgba(255,255,255,0.05)",
+        "card": "0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4)",
+        "card-hover": "0 8px 24px rgba(0,0,0,0.6), 0 0 0 1px rgba(62,207,142,0.1)",
+        "card-glow": "0 0 20px rgba(62,207,142,0.12)",
+        "panel": "0 4px 16px rgba(0,0,0,0.4)",
+        "dropdown": "0 12px 36px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06)",
+        "inner-glow": "inset 0 1px 0 rgba(255,255,255,0.04)",
       },
       borderRadius: {
         "2xl": "16px",

@@ -45,7 +45,7 @@ export function MetricCard({ metric }: MetricCardProps) {
   return (
     <div
       className={`
-        group relative bg-surface-2 rounded-xl border border-border-default
+        group relative bg-card rounded-2xl border border-white/[0.08]
         p-4 transition-all duration-300 cursor-default card-interactive card-accent-stripe
         ${isAnomaly ? "ring-1 ring-status-danger/30 border-status-danger/20" : ""}
       `}
@@ -63,7 +63,7 @@ export function MetricCard({ metric }: MetricCardProps) {
               strokeWidth={isAlert ? 2.5 : 2}
             />
           </div>
-          <span className="text-xs font-medium text-text-muted leading-tight">
+          <span className="text-xs font-medium text-secondary leading-tight">
             {metric.label}
           </span>
         </div>
@@ -88,12 +88,12 @@ export function MetricCard({ metric }: MetricCardProps) {
         <div>
           <span
             className={`text-2xl font-bold leading-none tracking-tight ${
-              isAnomaly ? "text-status-danger" : "text-text-primary"
+              isAnomaly ? "text-status-danger" : "text-white"
             }`}
           >
             {formatValue(metric.value)}
           </span>
-          <span className="text-xs text-text-muted ml-1.5">{metric.unit}</span>
+          <span className="text-xs text-secondary ml-1.5">{metric.unit}</span>
         </div>
 
         {/* Trend */}
@@ -104,7 +104,7 @@ export function MetricCard({ metric }: MetricCardProps) {
                 ? "text-status-success bg-status-success/10"
                 : metric.trend < 0
                 ? "text-status-danger bg-status-danger/10"
-                : "text-text-muted bg-white/5"
+                : "text-secondary bg-white/5"
             }`}
           >
             {metric.trend > 0 ? (

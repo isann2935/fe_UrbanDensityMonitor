@@ -51,27 +51,24 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 z-50 w-[260px] bg-surface-1 border-r border-border-default flex flex-col">
+    <aside className="fixed left-0 top-0 bottom-0 z-50 w-[260px] bg-[#111111] border-r border-white/[0.06] flex flex-col">
       {/* Logo / Brand */}
-      <div className="px-5 py-5 border-b border-border-subtle">
+      <div className="px-5 py-5 border-b border-white/[0.06]">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-xl bg-accent-muted flex items-center justify-center shadow-inner-glow transition-all duration-300 group-hover:shadow-card-glow">
-            <Radar size={20} className="text-accent-primary" strokeWidth={2} />
+          <div className="w-9 h-9 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center transition-all duration-200 group-hover:bg-accent/20">
+            <Radar size={18} className="text-accent" strokeWidth={1.8} />
           </div>
           <div>
-            <h1 className="text-[15px] font-bold text-text-primary leading-none tracking-tight">
+            <h1 className="text-[15px] font-bold text-white leading-none tracking-tight">
               Urban Density
             </h1>
-            <p className="text-[11px] text-text-muted mt-0.5 font-medium tracking-wide uppercase">
-              ML Vision
-            </p>
           </div>
         </Link>
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-text-muted">
+        <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-secondary">
           Main Menu
         </p>
         {visibleItems.map((item) => {
@@ -84,12 +81,12 @@ export function Sidebar() {
               key={item.id}
               href={item.href}
               className={`
-                group relative flex items-center gap-3 px-3 py-2.5 rounded-xl
+                group relative flex items-center gap-3 px-3 py-2.5 rounded-lg
                 transition-all duration-200 text-sm font-medium
                 ${
                   isActive
-                    ? "bg-accent-muted text-accent-primary nav-active-bar"
-                    : "text-text-secondary hover:text-text-primary hover:bg-white/[0.04]"
+                    ? "bg-accent/15 text-accent nav-active-bar"
+                    : "text-secondary hover:text-white hover:bg-white/[0.04]"
                 }
               `}
               title={item.label}
@@ -98,14 +95,14 @@ export function Sidebar() {
                 size={18}
                 strokeWidth={isActive ? 2.2 : 1.8}
                 className={`flex-shrink-0 transition-colors ${
-                  isActive ? "text-accent-primary" : "text-text-muted group-hover:text-text-secondary"
+                  isActive ? "text-accent" : "text-secondary group-hover:text-white"
                 }`}
               />
               <span className="flex-1">{item.label}</span>
 
               {/* Active arrow indicator */}
               {isActive && (
-                <ChevronRight size={14} className="text-accent-primary/60" />
+                <ChevronRight size={14} className="text-accent/60" />
               )}
             </Link>
           );
@@ -113,27 +110,20 @@ export function Sidebar() {
       </nav>
 
       {/* Bottom section — User + Logout */}
-      <div className="px-3 py-4 border-t border-border-subtle space-y-2">
-        {/* System Status */}
-        <div className="flex items-center gap-2 px-3 py-2">
-          <span className="flex items-center gap-1.5 text-xs text-status-success font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-status-success animate-pulse-dot" />
-            System Online
-          </span>
-        </div>
+      <div className="px-3 py-4 border-t border-white/[0.06] space-y-2">
 
         {/* User Info */}
-        <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface-2">
-          <div className="w-8 h-8 rounded-lg bg-accent-muted flex items-center justify-center">
-            <span className="text-xs font-bold text-accent-primary">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+          <div className="w-8 h-8 rounded-lg bg-accent/15 flex items-center justify-center">
+            <span className="text-xs font-bold text-accent">
               {user?.email?.charAt(0).toUpperCase() ?? "U"}
             </span>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium text-text-primary truncate">
+            <p className="text-xs font-medium text-white truncate">
               {user?.email?.split("@")[0] ?? "User"}
             </p>
-            <p className="text-[10px] text-text-muted capitalize">{role ?? "user"}</p>
+            <p className="text-[10px] text-secondary capitalize">{role ?? "user"}</p>
           </div>
         </div>
 
@@ -142,7 +132,7 @@ export function Sidebar() {
           onClick={handleLogout}
           title="Sign Out"
           aria-label="Sign Out"
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-text-secondary hover:text-status-danger hover:bg-red-500/[0.08] transition-all duration-200"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-secondary hover:text-status-danger hover:bg-red-500/[0.08] transition-all duration-200"
         >
           <LogOut size={17} strokeWidth={1.8} />
           <span>Sign Out</span>

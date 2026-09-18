@@ -6,6 +6,9 @@ import { PageLayout } from "@/presentation/components/PageLayout";
 import { historyService } from "@/infrastructure/services/historyService";
 import { streamService } from "@/infrastructure/services/streamService";
 import type { HistoryRecord, Stream, DensityStatus } from "@/domain/entities/TrafficMetric";
+import { CustomSelect } from "@/presentation/ui/CustomSelect";
+import type { DropdownOption } from "@/presentation/ui/CustomSelect";
+import { DENSITY_BADGE } from "@/shared/constants/densityStatus";
 import {
   Filter,
   ChevronLeft,
@@ -16,28 +19,10 @@ import {
 } from "lucide-react";
 
 
-const densityBadge: Record<DensityStatus, { bg: string; text: string; border: string }> = {
-  "Low Density": {
-    bg: "bg-emerald-500/10",
-    text: "text-emerald-400",
-    border: "border-emerald-500/30",
-  },
-  "Medium Density": {
-    bg: "bg-yellow-500/10",
-    text: "text-yellow-400",
-    border: "border-yellow-500/30",
-  },
-  "High Density": {
-    bg: "bg-red-500/10",
-    text: "text-red-400",
-    border: "border-red-500/30",
-  },
-  Anomaly: {
-    bg: "bg-orange-500/10",
-    text: "text-orange-400",
-    border: "border-orange-500/30",
-  },
-};
+// Use shared constants
+const densityBadge = DENSITY_BADGE;
+
+
 
 const PAGE_SIZE = 50;
 
@@ -91,8 +76,7 @@ export default function HistoryPage() {
   useEffect(() => {
     setOffset(0);
     fetchHistory(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterStreamId, filterStatus, dateFrom, dateTo]);
+  }, [filterStreamId, filterStatus, dateFrom, dateTo, fetchHistory]);
 
   const handlePageChange = (newOffset: number) => {
     setOffset(newOffset);
@@ -102,21 +86,39 @@ export default function HistoryPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
   const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
 
+  const streamOptions: DropdownOption[] = [
+    { value: "", label: "All Streams", dotColor: "bg-white/40" },
+    ...streams.map((s) => ({
+      value: s.id,
+      label: s.location_name,
+      dotColor: s.status === "active" ? "bg-status-success" : "bg-status-danger",
+      badge: s.stream_type,
+    })),
+  ];
+
+  const statusOptions: DropdownOption[] = [
+    { value: "", label: "All Status", dotColor: "bg-white/40" },
+    { value: "Low Density", label: "Low Density", dotColor: "bg-emerald-400" },
+    { value: "Medium Density", label: "Medium Density", dotColor: "bg-yellow-400" },
+    { value: "High Density", label: "High Density", dotColor: "bg-red-400" },
+    { value: "Anomaly", label: "Anomaly", dotColor: "bg-purple-400" },
+  ];
+
   return (
     <PageLayout>
-      <div className="max-w-7xl mx-auto pt-20">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">
+        <div>
+          <h1 className="text-xl font-bold text-white tracking-tight">
             Monitoring History
           </h1>
-          <p className="text-sm text-text-secondary mt-1">
-            Detailed traffic records from all monitoring sessions.
+          <p className="text-xs text-secondary mt-1">
+            Detailed traffic records and telemetry from ML inference streams.
           </p>
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
           {(["Low Density", "Medium Density", "High Density", "Anomaly"] as DensityStatus[]).map(
             (status) => {
               const cfg = densityBadge[status];
@@ -124,13 +126,13 @@ export default function HistoryPage() {
               return (
                 <div
                   key={status}
-                  className={`p-4 rounded-2xl border ${cfg.bg} ${cfg.border}`}
+                  className={`p-4 rounded-xl border bg-card ${cfg.border} card-interactive`}
                 >
-                  <p className={`text-xs font-semibold ${cfg.text} uppercase tracking-wider`}>
+                  <p className={`text-[10px] font-semibold ${cfg.text} uppercase tracking-wider`}>
                     {status}
                   </p>
-                  <p className={`text-2xl font-bold ${cfg.text} mt-1`}>{count}</p>
-                  <p className="text-xs text-text-secondary/60 mt-0.5">on this page</p>
+                  <p className={`text-2xl font-bold text-white mt-1`}>{count}</p>
+                  <p className="text-[10px] text-secondary mt-0.5">on this page</p>
                 </div>
               );
             }
@@ -138,50 +140,43 @@ export default function HistoryPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3 mb-5 p-4 bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl">
-          <div className="flex items-center gap-2 text-xs text-text-secondary">
-            <Filter size={13} />
+        <div className="flex flex-wrap items-center gap-3 p-3.5 bg-card border border-white/[0.08] rounded-2xl shadow-sm">
+          <div className="flex items-center gap-1.5 text-xs text-secondary font-medium mr-1">
+            <Filter size={13} className="text-accent" />
             <span>Filter:</span>
           </div>
 
-          <select
+          <CustomSelect
             value={filterStreamId}
-            onChange={(e) => setFilterStreamId(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary/50"
-          >
-            <option value="">All Streams</option>
-            {streams.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.location_name}
-              </option>
-            ))}
-          </select>
+            onChange={setFilterStreamId}
+            options={streamOptions}
+            placeholder="Select Stream"
+            title="Filter by Stream Node"
+            minWidth="w-64"
+          />
 
-          <select
+          <CustomSelect
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary/50"
-          >
-            <option value="">All Status</option>
-            <option value="Low Density">Low Density</option>
-            <option value="Medium Density">Medium Density</option>
-            <option value="High Density">High Density</option>
-            <option value="Anomaly">Anomaly</option>
-          </select>
+            onChange={setFilterStatus}
+            options={statusOptions}
+            placeholder="Select Status"
+            title="Filter by Density Status"
+            minWidth="w-52"
+          />
 
           <div className="flex items-center gap-2">
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary/50"
+              className="bg-card hover:bg-card/80 border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-accent font-mono shadow-sm transition-all"
             />
-            <span className="text-text-secondary/50 text-xs">→</span>
+            <span className="text-secondary text-xs">→</span>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:border-accent-primary/50"
+              className="bg-card hover:bg-card/80 border border-white/[0.08] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-accent font-mono shadow-sm transition-all"
             />
           </div>
 
@@ -193,7 +188,7 @@ export default function HistoryPage() {
                 setDateFrom("");
                 setDateTo("");
               }}
-              className="text-xs text-text-secondary/60 hover:text-text-secondary transition-colors"
+              className="text-xs text-secondary hover:text-accent font-medium transition-colors ml-auto px-2 py-1"
             >
               Clear filters
             </button>
@@ -202,7 +197,7 @@ export default function HistoryPage() {
 
         {/* Error */}
         {error && (
-          <div className="mb-4 flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 p-3 rounded-xl text-sm">
+          <div className="flex items-center gap-2 bg-status-danger/10 border border-status-danger/20 text-status-danger p-3 rounded-lg text-xs">
             <AlertTriangle size={14} />
             {error}
           </div>
@@ -211,28 +206,28 @@ export default function HistoryPage() {
         {/* Loading */}
         {isLoading && (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={24} className="animate-spin text-accent-primary" />
+            <Loader2 size={24} className="animate-spin text-accent" />
           </div>
         )}
 
         {/* Empty */}
         {!isLoading && history.length === 0 && !error && (
-          <div className="text-center py-20 bg-black/30 border border-white/8 rounded-2xl">
-            <Inbox size={36} className="text-text-secondary/30 mx-auto mb-3" />
-            <p className="text-text-secondary font-medium">No records found</p>
-            <p className="text-sm text-text-secondary/60 mt-1">
-              History records appear once a stream starts processing.
+          <div className="text-center py-16 bg-card border border-white/[0.08] rounded-2xl">
+            <Inbox size={32} className="text-secondary/40 mx-auto mb-3" />
+            <p className="text-white text-sm font-semibold">No records found</p>
+            <p className="text-xs text-secondary mt-1">
+              History records will appear once a CCTV stream starts processing.
             </p>
           </div>
         )}
 
         {/* Table */}
         {!isLoading && history.length > 0 && (
-          <div className="bg-black/40 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden">
+          <div className="bg-card border border-white/[0.08] rounded-2xl overflow-hidden shadow-2xl">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-white/8">
+                  <tr className="border-b border-white/[0.08] bg-black/20">
                     {[
                       "Timestamp",
                       "Person",
@@ -246,50 +241,50 @@ export default function HistoryPage() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="text-left px-4 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wider whitespace-nowrap"
+                        className="text-left px-4 py-3 text-[10px] font-semibold text-secondary uppercase tracking-wider whitespace-nowrap"
                       >
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-white/[0.06]">
                   {history.map((record) => {
                     const cfg = densityBadge[record.density_status] ?? densityBadge["Low Density"];
                     return (
                       <tr
                         key={record.id}
-                        className="hover:bg-white/3 transition-colors"
+                        className="hover:bg-white/[0.03] transition-colors"
                       >
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <p className="text-xs font-mono text-text-secondary">
+                          <p className="text-[11px] font-mono text-secondary">
                             {new Date(record.recorded_at).toLocaleString("id-ID")}
                           </p>
                         </td>
-                        <td className="px-4 py-3 text-center font-semibold text-text-primary">
+                        <td className="px-4 py-3 text-center font-semibold text-white">
                           {record.person_count}
                         </td>
-                        <td className="px-4 py-3 text-center text-text-secondary">
+                        <td className="px-4 py-3 text-center text-secondary">
                           {record.motorcycle_count}
                         </td>
-                        <td className="px-4 py-3 text-center text-text-secondary">
+                        <td className="px-4 py-3 text-center text-secondary">
                           {record.car_count}
                         </td>
-                        <td className="px-4 py-3 text-center text-text-secondary">
+                        <td className="px-4 py-3 text-center text-secondary">
                           {record.bus_count}
                         </td>
-                        <td className="px-4 py-3 text-center text-text-secondary">
+                        <td className="px-4 py-3 text-center text-secondary">
                           {record.truck_count}
                         </td>
-                        <td className="px-4 py-3 text-center font-medium text-text-primary">
+                        <td className="px-4 py-3 text-center font-bold text-white">
                           {record.total_vehicle_count}
                         </td>
-                        <td className="px-4 py-3 text-center font-mono text-accent-soft">
+                        <td className="px-4 py-3 text-center font-mono text-accent font-semibold">
                           {Number(record.person_vehicle_ratio).toFixed(2)}
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-lg border text-xs font-medium ${cfg.bg} ${cfg.border} ${cfg.text} whitespace-nowrap`}
+                            className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-medium ${cfg.bg} ${cfg.border} ${cfg.text} whitespace-nowrap`}
                           >
                             {record.density_status}
                           </span>
@@ -302,22 +297,22 @@ export default function HistoryPage() {
             </div>
 
             {/* Pagination footer */}
-            <div className="flex items-center justify-between px-5 py-3 border-t border-white/8">
-              <span className="text-xs text-text-secondary">
+            <div className="flex items-center justify-between px-5 py-3 border-t border-white/[0.08]">
+              <span className="text-xs text-secondary font-mono">
                 Page {currentPage} of {totalPages || 1} · {total} total records
               </span>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => handlePageChange(Math.max(0, offset - PAGE_SIZE))}
                   disabled={offset === 0 || isLoading}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10 text-text-secondary hover:bg-white/5 transition-all disabled:opacity-40"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/[0.08] text-secondary hover:text-white hover:bg-white/[0.04] transition-all disabled:opacity-40"
                 >
                   <ChevronLeft size={14} />
                 </button>
                 <button
                   onClick={() => handlePageChange(offset + PAGE_SIZE)}
                   disabled={offset + PAGE_SIZE >= total || isLoading}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center border border-white/10 text-text-secondary hover:bg-white/5 transition-all disabled:opacity-40"
+                  className="w-7 h-7 rounded-lg flex items-center justify-center border border-white/[0.08] text-secondary hover:text-white hover:bg-white/[0.04] transition-all disabled:opacity-40"
                 >
                   <ChevronRight size={14} />
                 </button>
